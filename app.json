@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "BTCROCKET",
+    "slug": "btcrocket",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.btcrocket.app"
+    },
+    "android": {
+      "package": "com.btcrocket.app"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

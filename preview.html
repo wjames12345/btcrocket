@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BTCROCKET · MISSION CONTROL</title>
+
+<!-- Satoshi (display) — literally named after Satoshi Nakamoto. From Fontshare. -->
+<link rel="preconnect" href="https://api.fontshare.com">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@900,800,700,500,400&display=swap">
+<!-- Geist Mono (telemetry) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #000000;
+    --bg-1: #0a0a0a;
+    --bg-2: #141414;
+    --bg-3: #1f1f1f;
+    --bg-4: #2a2a2a;
+    --rule: #333333;
+    --ink: #ffffff;
+    --ink-2: #c8c8c8;
+    --ink-3: #7a7a7a;
+    --ink-4: #404040;
+    --btc: #f7931a;
+    --btc-hot: #ffb13f;
+    --btc-deep: #c77100;
+    --mono: 'Geist Mono','SF Mono',ui-monospace,monospace;
+    --sans: 'Satoshi',-apple-system,sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    /* subtle film grain via SVG noise — production-grade depth */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.03 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  #stage {
+    position: fixed; inset: 0;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  /* === TICKER (mission-control feed at top) === */
+  .ticker {
+    border-bottom: 1px solid var(--rule);
+    padding: 9px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .ticker .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--btc);
+    box-shadow: 0 0 8px var(--btc);
+    animation: pulse 1.6s infinite;
+    flex-shrink: 0;
+  }
+  .ticker .feed {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    gap: 26px;
+    animation: scroll-feed 38s linear infinite;
+    will-change: transform;
+  }
+  .ticker .feed span { color: var(--ink-2); }
+  .ticker .feed b { color: var(--btc); font-weight: 700; margin-right: 4px; }
+  @keyframes scroll-feed {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }
+
+  /* === HEADER ROW (brand + rank) === */
+  .header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .brand {
+    font-family: var(--sans);
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .brand .slash { color: var(--btc); font-weight: 900; margin: 0 6px; }
+  .brand .sub {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin-top: 2px;
+    text-transform: uppercase;
+  }
+  .rank-pill {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--btc);
+    color: var(--btc);
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 120ms;
+  }
+  .rank-pill:hover { background: rgba(247,147,26,0.08); }
+  .rank-pill .arrow { font-size: 11px; }
+
+  /* === HERO === */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 64px 1fr 64px;
+  }
+  canvas#fx {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  /* === SIDE TELEMETRY STRIPS (left + right gutters) === */
+  .gutter {
+    position: relative;
+    z-index: 3;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    padding: 14px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-transform: uppercase;
+  }
+  .gutter.left { border-right: 1px solid var(--rule); }
+  .gutter.right { border-left: 1px solid var(--rule); }
+  .gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .gauge .label { color: var(--ink-4); font-size: 8px; letter-spacing: 0.22em; }
+  .gauge .value { color: var(--ink); font-weight: 700; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .gauge.hot .value { color: var(--btc); }
+  .gauge .bar {
+    width: 4px;
+    height: 60px;
+    background: var(--bg-3);
+    position: relative;
+    border: 1px solid var(--rule);
+    overflow: hidden;
+  }
+  .gauge .bar .fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, var(--btc-deep), var(--btc), var(--btc-hot));
+    transition: height 240ms cubic-bezier(.2,.9,.2,1);
+  }
+
+  /* corner ticks */
+  .gutter::before, .gutter::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border: 1px solid var(--btc);
+  }
+  .gutter::before { top: 4px; left: 4px; border-right: 0; border-bottom: 0; }
+  .gutter::after { bottom: 4px; left: 4px; border-right: 0; border-top: 0; }
+  .gutter.right::before { right: 4px; left: auto; border-left: 0; border-right: 1px solid var(--btc); border-bottom: 0; }
+  .gutter.right::after { right: 4px; left: auto; border-left: 0; border-right: 1px solid var(--btc); border-top: 0; }
+
+  /* === CENTER STAGE === */
+  .center {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px;
+    text-align: center;
+  }
+
+  .frame-top, .frame-bot {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .frame-top { margin-bottom: 4px; }
+  .frame-bot { margin-top: 12px; color: var(--btc); }
+  .frame-top span, .frame-bot span { color: var(--ink-4); margin: 0 4px; }
+
+  .stack-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .btc-amount {
+    font-family: var(--sans);
+    font-size: clamp(46px, 13vw, 96px);
+    font-weight: 900;
+    color: var(--btc);
+    letter-spacing: -0.04em;
+    line-height: 0.92;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px rgba(247,147,26,0.5), 0 0 60px rgba(247,147,26,0.18);
+    transition: transform 140ms cubic-bezier(.2,.9,.2,1);
+    mix-blend-mode: screen;
+    position: relative;
+  }
+  .btc-amount .symbol {
+    color: var(--btc-hot);
+    margin-right: 4px;
+    font-weight: 900;
+  }
+  .btc-amount.pulse { transform: scale(1.05); }
+  .btc-amount.pulse-down { transform: scale(0.96); }
+
+  /* slot-machine roll on digits */
+  .btc-amount .digit {
+    display: inline-block;
+    transition: transform 220ms cubic-bezier(.2,.9,.2,1);
+  }
+  .btc-amount .digit.roll { animation: rollDigit 380ms cubic-bezier(.2,.9,.2,1); }
+  @keyframes rollDigit {
+    0%   { transform: translateY(-30%); opacity: 0; }
+    30%  { opacity: 1; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .sats-sub {
+    font-family: var(--mono);
+    color: var(--ink-2);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    margin-top: 14px;
+    font-variant-numeric: tabular-nums;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0,0,0,0.8);
+  }
+  .sats-sub .unit { color: var(--ink-4); margin-left: 6px; }
+
+  .status-panel {
+    margin-top: 16px;
+    padding: 8px 14px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-panel.hot { border-color: var(--btc); color: var(--btc); }
+  .status-panel .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--ink-3);
+  }
+  .status-panel.hot .dot {
+    background: var(--btc);
+    box-shadow: 0 0 8px var(--btc);
+    animation: pulse 1.2s infinite;
+  }
+
+  .progress-pips {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 18px;
+  }
+  .pip {
+    width: 22px; height: 3px;
+    background: var(--bg-3);
+    transition: background 200ms;
+  }
+  .pip.on { background: var(--btc); box-shadow: 0 0 6px rgba(247,147,26,0.7); }
+
+  /* === ACTION === */
+  .action-wrap {
+    padding: 14px 16px 20px;
+    border-top: 1px solid var(--rule);
+    z-index: 3;
+    background: var(--bg);
+  }
+  .action {
+    width: 100%;
+    appearance: none;
+    border: 0;
+    padding: 22px;
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: #000;
+    background: var(--btc);
+    position: relative;
+    transition: transform 80ms cubic-bezier(.2,.9,.2,1), background 180ms;
+    /* hard brutalist corners — NO rounding */
+    border-radius: 0;
+    /* faux key shadow */
+    box-shadow: 0 4px 0 var(--btc-deep), 0 12px 32px rgba(247,147,26,0.4);
+  }
+  .action:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 var(--btc-deep), 0 8px 22px rgba(247,147,26,0.35);
+  }
+  .action.sell {
+    background: #ffffff;
+    color: #000;
+    box-shadow: 0 4px 0 #999, 0 12px 32px rgba(255,255,255,0.15);
+  }
+  .action.sell:active {
+    box-shadow: 0 0 0 #999, 0 8px 22px rgba(255,255,255,0.12);
+  }
+  .action .arrow {
+    margin-left: 10px;
+    font-family: var(--mono);
+    font-weight: 800;
+  }
+  .action-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  /* === FLASH === */
+  .flash {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 220ms ease-out;
+    background: radial-gradient(circle at center, rgba(247,147,26,0.22), transparent 65%);
+  }
+  .flash.fire { opacity: 1; }
+  .flash.sell-fire {
+    background: radial-gradient(circle at center, rgba(255,255,255,0.18), transparent 65%);
+    opacity: 1;
+  }
+
+  /* === LEADERBOARD === */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 92vh;
+    background: var(--bg);
+    border-top: 1px solid var(--btc);
+    z-index: 101;
+    transform: translateY(100%);
+    transition: transform 360ms cubic-bezier(.2,.9,.2,1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .sheet-handle {
+    width: 26px; height: 3px;
+    background: var(--btc);
+  }
+  .sheet-title {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .sheet-title .sub {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--ink-3);
+    font-weight: 500;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .sheet-close {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 8px 12px;
+    cursor: pointer;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: all 120ms;
+  }
+  .sheet-close:hover { border-color: var(--btc); color: var(--btc); }
+
+  .sheet-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--rule);
+    padding: 0 12px;
+  }
+  .sheet-tab {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--ink-3);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    padding: 14px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .sheet-tab.active {
+    color: var(--btc);
+    border-bottom-color: var(--btc);
+  }
+  .sheet-meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--ink-4);
+    padding: 12px 20px 6px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .lb-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 24px;
+  }
+  .lb-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--bg-3);
+    font-family: var(--mono);
+  }
+  .lb-row .rank {
+    color: var(--ink-3);
+    font-weight: 700;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  .lb-row .who {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .lb-row .name {
+    font-family: var(--sans);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lb-row .tier {
+    color: var(--ink-3);
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lb-row .tier .badge {
+    width: 7px; height: 7px;
+    background: var(--ink-4);
+  }
+  .lb-row .sats {
+    color: var(--btc);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+  .lb-row .sats .unit {
+    color: var(--ink-3);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    margin-left: 5px;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  .lb-row.you {
+    background: linear-gradient(90deg, rgba(247,147,26,0.16) 0%, rgba(247,147,26,0.04) 60%, transparent 100%);
+    border-left: 3px solid var(--btc);
+    padding-left: 17px;
+  }
+  .lb-row.you .rank { color: var(--btc); }
+  .lb-row.you .name { color: var(--btc-hot); }
+  .lb-row.you .name::after {
+    content: ' · YOU';
+    font-family: var(--mono);
+    color: var(--btc-deep);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  .b-0 { background: var(--ink-4) !important; }
+  .b-1 { background: var(--ink-3) !important; }
+  .b-2 { background: #999 !important; }
+  .b-3 { background: var(--btc-deep) !important; }
+  .b-4 { background: var(--btc) !important; box-shadow: 0 0 6px rgba(247,147,26,0.6); }
+  .b-5 { background: var(--btc-hot) !important; box-shadow: 0 0 10px rgba(255,177,63,0.7); }
+  .b-6 { background: #fff5a0 !important; box-shadow: 0 0 14px rgba(255,245,160,0.8); }
+
+  /* boot reveal */
+  .ticker, .header, .center > *, .gutter, .action-wrap {
+    animation: fadeUp 480ms cubic-bezier(.2,.9,.2,1) backwards;
+  }
+  .header { animation-delay: 60ms; }
+  .gutter.left { animation-delay: 140ms; }
+  .gutter.right { animation-delay: 140ms; }
+  .stack-label { animation-delay: 180ms; }
+  .btc-amount { animation-delay: 240ms; }
+  .sats-sub { animation-delay: 320ms; }
+  .status-panel { animation-delay: 380ms; }
+  .progress-pips { animation-delay: 440ms; }
+  .action-wrap { animation-delay: 280ms; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 480px) {
+    .hero { grid-template-columns: 48px 1fr 48px; }
+    .gauge .bar { height: 44px; }
+    .frame-top, .frame-bot { font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- live network ticker -->
+  <div class="ticker">
+    <span class="led"></span>
+    <div class="feed" id="feed">
+      <span><b>BLOCK</b>887,432</span>
+      <span><b>FEE</b>4 SAT/VB</span>
+      <span><b>MEMPOOL</b>1.18 GB</span>
+      <span><b>HASHRATE</b>624 EH/S</span>
+      <span><b>DIFFICULTY</b>+1.2%</span>
+      <span><b>HALVING</b>1,247 BLOCKS</span>
+      <span><b>SUPPLY</b>19.85M / 21M</span>
+      <!-- duplicate for seamless loop -->
+      <span><b>BLOCK</b>887,432</span>
+      <span><b>FEE</b>4 SAT/VB</span>
+      <span><b>MEMPOOL</b>1.18 GB</span>
+      <span><b>HASHRATE</b>624 EH/S</span>
+      <span><b>DIFFICULTY</b>+1.2%</span>
+      <span><b>HALVING</b>1,247 BLOCKS</span>
+      <span><b>SUPPLY</b>19.85M / 21M</span>
+    </div>
+  </div>
+
+  <!-- header -->
+  <header class="header">
+    <div class="brand">
+      BTC<span class="slash">/</span>ROCKET
+      <span class="sub">Mission Control · v0.3</span>
+    </div>
+    <button class="rank-pill" id="rank-pill">
+      <span>Rank</span>
+      <span id="rank-num">#0</span>
+      <span class="arrow">↗</span>
+    </button>
+  </header>
+
+  <!-- hero with side gutters -->
+  <section class="hero">
+    <canvas id="fx"></canvas>
+
+    <aside class="gutter left">
+      <div class="gauge" id="g-thrust">
+        <div class="label">THR</div>
+        <div class="value" id="g-thrust-v">000</div>
+        <div class="bar"><div class="fill" id="g-thrust-f" style="height:0%"></div></div>
+      </div>
+      <div class="gauge" id="g-fuel">
+        <div class="label">FUEL</div>
+        <div class="value" id="g-fuel-v">0.0</div>
+        <div class="bar"><div class="fill" id="g-fuel-f" style="height:0%"></div></div>
+      </div>
+    </aside>
+
+    <div class="center">
+      <div class="frame-top">┌<span>─</span>YOUR STACK<span>─</span>┐</div>
+      <div class="stack-label">Live · sats-denominated</div>
+      <div class="btc-amount" id="btc-amount">
+        <span class="symbol">₿</span><span id="amt">0.00000000</span>
+      </div>
+      <div class="sats-sub"><span id="sats-num">0</span><span class="unit">SATS</span></div>
+      <div class="status-panel" id="status-panel">
+        <span class="dot"></span>
+        <span id="status-text">DEAD ROCKET · ENGINES OFFLINE</span>
+      </div>
+      <div class="progress-pips" id="pips"></div>
+      <div class="frame-bot">└<span>─</span>STATE <span id="state-idx">00</span> / 06<span>─</span>┘</div>
+    </div>
+
+    <aside class="gutter right">
+      <div class="gauge" id="g-psi">
+        <div class="label">PSI</div>
+        <div class="value" id="g-psi-v">000</div>
+        <div class="bar"><div class="fill" id="g-psi-f" style="height:0%"></div></div>
+      </div>
+      <div class="gauge" id="g-temp">
+        <div class="label">TEMP</div>
+        <div class="value" id="g-temp-v">072</div>
+        <div class="bar"><div class="fill" id="g-temp-f" style="height:0%"></div></div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- action -->
+  <div class="action-wrap">
+    <button class="action" id="action">
+      <span id="action-label">BUY BTC</span>
+      <span class="arrow" id="action-arrow">↑</span>
+    </button>
+    <div class="action-meta">
+      <span id="action-hint">TAP TO STACK SATS</span>
+      <span id="next-state">NEXT · IGNITION SEQUENCE</span>
+    </div>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<!-- LEADERBOARD -->
+<div class="sheet-backdrop" id="lb-backdrop"></div>
+<aside class="sheet" id="lb-sheet">
+  <div class="sheet-header">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">LEADERBOARD<span class="sub">Global · Tier ranked</span></div>
+    <button class="sheet-close" id="lb-close">CLOSE</button>
+  </div>
+  <div class="sheet-tabs">
+    <button class="sheet-tab active">ALL TIME</button>
+    <button class="sheet-tab">24H</button>
+    <button class="sheet-tab">7D</button>
+    <button class="sheet-tab">FRIENDS</button>
+  </div>
+  <div class="sheet-meta">
+    <span>32 STACKERS · TIER-BUCKETED</span>
+    <span id="lb-updated">UPDATED 14:08:32</span>
+  </div>
+  <div class="lb-list" id="lb-list"></div>
+</aside>
+
+<script>
+'use strict';
+
+// === STATES (the 7 flame phases) — converged for the prototype.
+// The full 50-tier ladder lives in the RN code; here we keep
+// 7 visible phases so each tap is a recognizable JUMP.
+const STATES = [
+  { name: 'DEAD',              label: 'DEAD ROCKET',              short: 'DEAD',        sats: 0,             fx: { smoke: 0,  sparks: 0,  flame: 0,  embers: 0  } },
+  { name: 'TURNING ON',        label: 'IGNITION SEQUENCE',        short: 'IGNITE',      sats: 100_000,       fx: { smoke: 1,  sparks: 1,  flame: 0,  embers: 0  } },
+  { name: 'SMOKING',           label: 'SMOKING',                  short: 'SMOKE',       sats: 1_000_000,     fx: { smoke: 4,  sparks: 0,  flame: 0,  embers: 0  } },
+  { name: 'SPARKING',          label: 'SPARKING',                 short: 'SPARK',       sats: 10_000_000,    fx: { smoke: 3,  sparks: 6,  flame: 1,  embers: 2  } },
+  { name: 'BLASTING',          label: 'BLASTING FLAMES',          short: 'BLAST',       sats: 100_000_000,   fx: { smoke: 5,  sparks: 3,  flame: 6,  embers: 4  } },
+  { name: 'ROARING',           label: 'ROARING FLAMES',           short: 'ROAR',        sats: 1_000_000_000, fx: { smoke: 7,  sparks: 5,  flame: 8,  embers: 7  } },
+  { name: 'MAXIMUM BURN',      label: 'ROARING EVERYTHING',       short: 'MAX',         sats: 10_000_000_000,fx: { smoke: 10, sparks: 10, flame: 10, embers: 10 } },
+];
+
+const PEERS = [
+  { name: 'HODLForever2140', sats: 210_000_000_000 },
+  { name: '21MillionMax',    sats: 168_000_000_000 },
+  { name: 'CitadelMaximus',  sats:  98_400_000_000 },
+  { name: 'diamond_hands',   sats:  64_200_000_000 },
+  { name: 'SatoshisHeir',    sats:  41_800_000_000 },
+  { name: 'OrangePilled',    sats:  18_900_000_000 },
+  { name: 'low_time_pref',   sats:  12_400_000_000 },
+  { name: 'NeverSellBottom', sats:   7_300_000_000 },
+  { name: 'stack_til_dead',  sats:   4_900_000_000 },
+  { name: 'csw_skeptic',     sats:   3_100_000_000 },
+  { name: 'mempool_warrior', sats:   2_400_000_000 },
+  { name: 'plebs_unite',     sats:   1_750_000_000 },
+  { name: 'OPRETURN42',      sats:     920_000_000 },
+  { name: 'cold_storage',    sats:     610_000_000 },
+  { name: 'NodeRunner_UK',   sats:     410_000_000 },
+  { name: 'multisig_or_die', sats:     290_000_000 },
+  { name: 'KeyPair_94',      sats:     180_000_000 },
+  { name: 'sat_stacker',     sats:     120_000_000 },
+  { name: 'first_7M_sats',   sats:      72_400_000 },
+  { name: 'taproot_enjoyer', sats:      48_200_000 },
+  { name: 'sound_money_max', sats:      31_100_000 },
+  { name: 'fiat_refugee',    sats:      19_800_000 },
+  { name: 'BlockSpace4Life', sats:      12_400_000 },
+  { name: 'satoshi_nak',     sats:       7_900_000 },
+  { name: 'hashing_away',    sats:       4_700_000 },
+  { name: 'orange_coin',     sats:       2_900_000 },
+  { name: 'pleb_node_22',    sats:       1_650_000 },
+  { name: 'first_M_sats',    sats:       1_050_000 },
+  { name: 'just_a_few',      sats:         470_000 },
+  { name: 'starting_my',     sats:         110_000 },
+  { name: 'sat_curious',     sats:          42_000 },
+];
+
+let state = 0;
+let mode = 'buy';
+
+// === CANVAS ===
+const canvas = document.getElementById('fx');
+const ctx = canvas.getContext('2d', { alpha: true });
+let W = 0, H = 0;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+  const r = canvas.getBoundingClientRect();
+  W = r.width; H = r.height;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+// === PARTICLES (capped) ===
+const MAX = { smoke: 28, sparks: 46, flame: 20, embers: 60 };
+const smoke = [], sparks = [], flame = [], embers = [];
+
+function anchors() {
+  return { cx: W / 2, engineY: H * 0.76, bodyTopY: H * 0.18 };
+}
+
+function spawnSmoke(intensity) {
+  if (smoke.length >= MAX.smoke) return;
+  const { cx, engineY } = anchors();
+  const n = Math.min(2, Math.ceil(intensity * 0.18));
+  for (let i = 0; i < n; i++) {
+    if (smoke.length >= MAX.smoke) break;
+    smoke.push({ x: cx + (Math.random() - 0.5) * 80, y: engineY + 8, vx: (Math.random() - 0.5) * 0.5, vy: -0.25 - Math.random() * 0.5 - intensity * 0.04, r: 14 + Math.random() * 16, life: 0, max: 100 + Math.random() * 70 });
+  }
+}
+function spawnSparks(intensity) {
+  if (sparks.length >= MAX.sparks) return;
+  const { cx, engineY } = anchors();
+  const n = Math.min(3, Math.ceil(intensity * 0.4));
+  for (let i = 0; i < n; i++) {
+    if (sparks.length >= MAX.sparks) break;
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;
+    const speed = 2 + Math.random() * 4 + intensity * 0.3;
+    sparks.push({ x: cx + (Math.random() - 0.5) * 14, y: engineY, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0, max: 28 + Math.random() * 22 });
+  }
+}
+function spawnFlame(intensity) {
+  if (flame.length >= MAX.flame) return;
+  const { cx, engineY } = anchors();
+  const n = Math.min(2, Math.ceil(intensity * 0.3));
+  for (let i = 0; i < n; i++) {
+    if (flame.length >= MAX.flame) break;
+    flame.push({ x: cx + (Math.random() - 0.5) * 18, y: engineY, vy: -1.4 - Math.random() * 1.4 - intensity * 0.12, r: 14 + Math.random() * 10 + intensity * 1.2, life: 0, max: 24 + Math.random() * 14 });
+  }
+}
+function spawnEmbers(intensity) {
+  if (embers.length >= MAX.embers) return;
+  const { cx, engineY } = anchors();
+  const n = Math.min(4, Math.ceil(intensity * 0.4));
+  for (let i = 0; i < n; i++) {
+    if (embers.length >= MAX.embers) break;
+    embers.push({ x: cx + (Math.random() - 0.5) * 50, y: engineY + 8, vx: (Math.random() - 0.5) * 1.2, vy: 0.6 + Math.random() * 2, r: 1 + Math.random() * 1.8, life: 0, max: 30 + Math.random() * 40 });
+  }
+}
+function step() {
+  for (let i = smoke.length - 1; i >= 0; i--) { const p = smoke[i]; p.x += p.vx; p.y += p.vy; p.vy -= 0.004; p.r += 0.25; p.life++; if (p.life > p.max) smoke.splice(i, 1); }
+  for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.life++; if (p.life > p.max) sparks.splice(i, 1); }
+  for (let i = flame.length - 1; i >= 0; i--) { const p = flame[i]; p.y += p.vy; p.r += 0.4; p.life++; if (p.life > p.max) flame.splice(i, 1); }
+  for (let i = embers.length - 1; i >= 0; i--) { const p = embers[i]; p.x += p.vx; p.y += p.vy; p.life++; if (p.life > p.max) embers.splice(i, 1); }
+}
+
+// === ROCKET (clean line-art, blueprint-style) ===
+function drawRocket() {
+  const { cx, engineY, bodyTopY } = anchors();
+  const s = state;
+  const bodyW = 26 + s * 4;
+  const bodyTop = bodyTopY + 26;
+  const bodyBot = engineY - 6;
+  const bodyH = bodyBot - bodyTop;
+  const ascend = s >= 6 ? -10 : 0;
+
+  // outline-only at DEAD
+  if (s === 0) {
+    ctx.strokeStyle = 'rgba(247,147,26,0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(cx - bodyW / 2, bodyTop, bodyW, bodyH);
+    ctx.beginPath();
+    ctx.moveTo(cx - bodyW / 2, bodyTop);
+    ctx.lineTo(cx, bodyTop - 24);
+    ctx.lineTo(cx + bodyW / 2, bodyTop);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    return;
+  }
+
+  // nose
+  ctx.fillStyle = '#dcdce0';
+  ctx.beginPath();
+  ctx.moveTo(cx - bodyW / 2, bodyTop + ascend);
+  ctx.quadraticCurveTo(cx, bodyTop - 34 + ascend, cx + bodyW / 2, bodyTop + ascend);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#f7931a';
+  ctx.beginPath();
+  ctx.arc(cx, bodyTop - 30 + ascend, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // body
+  ctx.fillStyle = '#e8e8ec';
+  ctx.fillRect(cx - bodyW / 2, bodyTop + ascend, bodyW, bodyH);
+  // edge shading — flat / poster style
+  ctx.fillStyle = '#000';
+  ctx.globalAlpha = 0.18;
+  ctx.fillRect(cx + bodyW / 2 - 3, bodyTop + 4 + ascend, 3, bodyH - 8);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.4;
+  ctx.fillRect(cx - bodyW / 2 + 2, bodyTop + 4 + ascend, 2, bodyH - 8);
+  ctx.globalAlpha = 1;
+
+  // orange stripe + BTC glyph
+  if (s >= 2) {
+    ctx.fillStyle = '#f7931a';
+    ctx.fillRect(cx - bodyW / 2, bodyTop + bodyH * 0.18 + ascend, bodyW, 5);
+    ctx.fillStyle = '#000';
+    ctx.font = '900 16px Satoshi, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('₿', cx, bodyTop + bodyH * 0.18 + ascend + 3);
+  }
+
+  // panel line (vertical)
+  if (s >= 3) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, bodyTop + ascend);
+    ctx.lineTo(cx, bodyTop + bodyH + ascend);
+    ctx.stroke();
+  }
+
+  // fins
+  if (s >= 3) {
+    ctx.fillStyle = '#b8b8c0';
+    ctx.beginPath();
+    ctx.moveTo(cx - bodyW / 2, bodyTop + bodyH - 22 + ascend);
+    ctx.lineTo(cx - bodyW / 2 - 14, bodyTop + bodyH + 4 + ascend);
+    ctx.lineTo(cx - bodyW / 2, bodyTop + bodyH + 4 + ascend);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + bodyW / 2, bodyTop + bodyH - 22 + ascend);
+    ctx.lineTo(cx + bodyW / 2 + 14, bodyTop + bodyH + 4 + ascend);
+    ctx.lineTo(cx + bodyW / 2, bodyTop + bodyH + 4 + ascend);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // boosters at high state
+  if (s >= 5) {
+    for (const dx of [-bodyW / 2 - 14, bodyW / 2 + 14]) {
+      const bW = 12, bH = bodyH * 0.65;
+      const by = bodyTop + bodyH - bH + ascend;
+      ctx.fillStyle = '#cfcfd4';
+      ctx.fillRect(cx + dx - bW / 2, by, bW, bH);
+      ctx.beginPath();
+      ctx.moveTo(cx + dx - bW / 2, by + 5);
+      ctx.quadraticCurveTo(cx + dx, by - 9, cx + dx + bW / 2, by + 5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f7931a';
+      ctx.fillRect(cx + dx - bW / 2, by + bH * 0.4, bW, 2);
+    }
+  }
+
+  // engine glow
+  if (s >= 3) {
+    const a = Math.min(1, (s - 2) * 0.25);
+    const grd = ctx.createRadialGradient(cx, engineY - 2, 1, cx, engineY - 2, 28 + s * 3);
+    grd.addColorStop(0, `rgba(255,250,180,${a})`);
+    grd.addColorStop(0.4, `rgba(255,140,40,${a * 0.7})`);
+    grd.addColorStop(1, 'rgba(120,30,10,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(cx, engineY - 2, 28 + s * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const fx = STATES[state].fx;
+  const burn = (fx.flame + fx.embers + fx.sparks) / 30;
+  if (burn > 0.05) {
+    const grd = ctx.createRadialGradient(W / 2, H * 0.7, 2, W / 2, H * 0.7, Math.min(W, H) * 0.55);
+    grd.addColorStop(0, `rgba(247,147,26,${burn * 0.32})`);
+    grd.addColorStop(0.5, `rgba(247,147,26,${burn * 0.08})`);
+    grd.addColorStop(1, 'rgba(247,147,26,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  for (const p of smoke) {
+    const a = (1 - p.life / p.max) * 0.45;
+    ctx.fillStyle = `rgba(160,160,170,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  drawRocket();
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of flame) {
+    const a = (1 - p.life / p.max) * 0.55;
+    ctx.fillStyle = `rgba(255,160,60,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const p of flame) {
+    const a = (1 - p.life / p.max) * 0.9;
+    ctx.fillStyle = `rgba(255,235,180,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y + 2, p.r * 0.42, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const p of sparks) {
+    const a = 1 - p.life / p.max;
+    ctx.strokeStyle = `rgba(255,200,80,${a})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 1.5, p.y - p.vy * 1.5); ctx.stroke();
+  }
+  for (const p of embers) {
+    const a = 1 - p.life / p.max;
+    ctx.fillStyle = `rgba(255,180,80,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// 30fps cap
+const TARGET_MS = 1000 / 30;
+let lastFrame = 0;
+function loop(now) {
+  if (now - lastFrame >= TARGET_MS) {
+    lastFrame = now;
+    const fx = STATES[state].fx;
+    if (fx.smoke > 0)  spawnSmoke(fx.smoke);
+    if (fx.flame > 0)  spawnFlame(fx.flame);
+    if (fx.sparks > 0) spawnSparks(fx.sparks);
+    if (fx.embers > 0) spawnEmbers(fx.embers);
+    step();
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+
+// === DOM ===
+const amtEl = document.getElementById('amt');
+const satsNumEl = document.getElementById('sats-num');
+const statusPanelEl = document.getElementById('status-panel');
+const statusTextEl = document.getElementById('status-text');
+const stateIdxEl = document.getElementById('state-idx');
+const pipsEl = document.getElementById('pips');
+const actionEl = document.getElementById('action');
+const actionLabel = document.getElementById('action-label');
+const actionArrow = document.getElementById('action-arrow');
+const actionHint = document.getElementById('action-hint');
+const nextStateEl = document.getElementById('next-state');
+const btcEl = document.getElementById('btc-amount');
+const flashEl = document.getElementById('flash');
+const rankNumEl = document.getElementById('rank-num');
+const rankPillEl = document.getElementById('rank-pill');
+const lbBackdrop = document.getElementById('lb-backdrop');
+const lbSheet = document.getElementById('lb-sheet');
+const lbClose = document.getElementById('lb-close');
+const lbList = document.getElementById('lb-list');
+const lbUpdated = document.getElementById('lb-updated');
+const gThrustV = document.getElementById('g-thrust-v');
+const gThrustF = document.getElementById('g-thrust-f');
+const gFuelV = document.getElementById('g-fuel-v');
+const gFuelF = document.getElementById('g-fuel-f');
+const gPsiV = document.getElementById('g-psi-v');
+const gPsiF = document.getElementById('g-psi-f');
+const gTempV = document.getElementById('g-temp-v');
+const gTempF = document.getElementById('g-temp-f');
+
+function fmtBtc(sats) { return (sats / 1e8).toFixed(8); }
+function fmtSats(sats) { return sats.toLocaleString('en-GB'); }
+function fmtShortSats(sats) {
+  if (sats >= 1e11) return (sats / 1e8).toFixed(0).toLocaleString() + ' BTC';
+  if (sats >= 1e9)  return (sats / 1e8).toFixed(1) + ' BTC';
+  if (sats >= 1e8)  return (sats / 1e8).toFixed(3) + ' BTC';
+  if (sats >= 1e6)  return (sats / 1e6).toFixed(2) + 'M SATS';
+  if (sats >= 1e3)  return (sats / 1e3).toFixed(1) + 'k SATS';
+  return sats.toLocaleString('en-GB') + ' SATS';
+}
+function tierBucketForSats(sats) {
+  for (let i = STATES.length - 1; i >= 0; i--) if (sats >= STATES[i].sats) return i;
+  return 0;
+}
+function computeRank() {
+  const youSats = STATES[state].sats;
+  return PEERS.filter((p) => p.sats > youSats).length + 1;
+}
+
+// digit-roll on number change
+let prevAmtChars = '0.00000000';
+function setAmount(satsValue) {
+  const newStr = fmtBtc(satsValue);
+  let html = '';
+  for (let i = 0; i < newStr.length; i++) {
+    const ch = newStr[i];
+    const changed = ch !== prevAmtChars[i];
+    html += `<span class="digit${changed ? ' roll' : ''}">${ch}</span>`;
+  }
+  amtEl.innerHTML = html;
+  prevAmtChars = newStr;
+}
+
+function render() {
+  const s = STATES[state];
+  setAmount(s.sats);
+  satsNumEl.textContent = fmtSats(s.sats);
+  statusTextEl.textContent = s.label + ' · STATE ' + String(state).padStart(2, '0');
+  stateIdxEl.textContent = String(state).padStart(2, '0');
+  statusPanelEl.classList.toggle('hot', state >= 4);
+
+  pipsEl.innerHTML = '';
+  for (let i = 0; i < STATES.length; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i <= state ? ' on' : '');
+    pipsEl.appendChild(p);
+  }
+
+  if (mode === 'buy') {
+    actionEl.classList.remove('sell');
+    actionLabel.textContent = 'BUY BTC';
+    actionArrow.textContent = '↑';
+    actionHint.textContent = 'TAP TO STACK SATS';
+  } else {
+    actionEl.classList.add('sell');
+    actionLabel.textContent = 'SELL BTC';
+    actionArrow.textContent = '↓';
+    actionHint.textContent = 'TAP TO DUMP';
+  }
+  const next = STATES[state + (mode === 'buy' ? 1 : -1)];
+  nextStateEl.textContent = next ? `NEXT · ${next.label}` : 'AT LIMIT';
+
+  // gauges
+  const thrustPct = Math.round((s.fx.flame / 10) * 100);
+  const fuelPct = Math.min(100, ((s.fx.smoke + s.fx.flame + s.fx.embers) / 30) * 100);
+  const psiPct = Math.min(100, ((s.fx.flame + s.fx.sparks) / 20) * 100);
+  const tempPct = Math.min(100, (s.fx.flame / 10) * 100);
+  gThrustV.textContent = String(thrustPct).padStart(3, '0');
+  gFuelV.textContent = (fuelPct / 10).toFixed(1);
+  gPsiV.textContent = String(Math.round(psiPct * 4.7)).padStart(3, '0');
+  gTempV.textContent = String(Math.round(72 + tempPct * 28)).padStart(3, '0');
+  gThrustF.style.height = thrustPct + '%';
+  gFuelF.style.height = fuelPct + '%';
+  gPsiF.style.height = psiPct + '%';
+  gTempF.style.height = tempPct + '%';
+
+  rankNumEl.textContent = '#' + computeRank().toLocaleString('en-GB');
+}
+
+function flashScreen(sellish) {
+  flashEl.classList.remove('fire', 'sell-fire');
+  void flashEl.offsetWidth;
+  flashEl.classList.add(sellish ? 'sell-fire' : 'fire');
+  setTimeout(() => flashEl.classList.remove('fire', 'sell-fire'), 300);
+}
+
+function snap(dir) {
+  const next = Math.max(0, Math.min(STATES.length - 1, state + dir));
+  const moved = next !== state;
+  state = next;
+
+  btcEl.classList.remove('pulse', 'pulse-down');
+  void btcEl.offsetWidth;
+  btcEl.classList.add(dir > 0 ? 'pulse' : 'pulse-down');
+  if (moved) flashScreen(dir < 0);
+
+  const fx = STATES[state].fx;
+  if (dir > 0 && moved) {
+    if (fx.sparks > 0) for (let i = 0; i < 8; i++) spawnSparks(fx.sparks * 1.5);
+    if (fx.flame > 0)  for (let i = 0; i < 3; i++) spawnFlame(fx.flame * 1.4);
+    if (fx.smoke > 0)  for (let i = 0; i < 3; i++) spawnSmoke(fx.smoke * 1.2);
+    if (fx.embers > 0) for (let i = 0; i < 5; i++) spawnEmbers(fx.embers * 1.3);
+  }
+  render();
+  mode = (mode === 'buy') ? 'sell' : 'buy';
+  render();
+  if (lbSheet.classList.contains('open')) renderLeaderboard();
+}
+actionEl.addEventListener('click', () => snap(mode === 'buy' ? +1 : -1));
+
+// leaderboard
+function renderLeaderboard() {
+  const youSats = STATES[state].sats;
+  const merged = [...PEERS, { name: 'YOU', sats: youSats, you: true }];
+  merged.sort((a, b) => b.sats - a.sats);
+  lbList.innerHTML = '';
+  let yourRow = null;
+  merged.forEach((entry, i) => {
+    const rank = i + 1;
+    const bucket = tierBucketForSats(entry.sats);
+    const tierName = STATES[bucket].label;
+    const row = document.createElement('div');
+    row.className = 'lb-row' + (entry.you ? ' you' : '');
+    row.innerHTML = `
+      <div class="rank">#${rank.toLocaleString('en-GB')}</div>
+      <div class="who">
+        <div class="name">${entry.name}</div>
+        <div class="tier"><span class="badge b-${bucket}"></span>${tierName}</div>
+      </div>
+      <div class="sats">${fmtShortSats(entry.sats)}</div>
+    `;
+    lbList.appendChild(row);
+    if (entry.you) yourRow = row;
+  });
+  const d = new Date();
+  lbUpdated.textContent = 'UPDATED ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  if (yourRow) setTimeout(() => yourRow.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80);
+}
+function openSheet() { lbSheet.classList.add('open'); lbBackdrop.classList.add('open'); renderLeaderboard(); }
+function closeSheet() { lbSheet.classList.remove('open'); lbBackdrop.classList.remove('open'); }
+rankPillEl.addEventListener('click', openSheet);
+lbClose.addEventListener('click', closeSheet);
+lbBackdrop.addEventListener('click', closeSheet);
+
+// boot
+resize();
+render();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
