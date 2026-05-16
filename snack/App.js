@@ -35,7 +35,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import { useFonts, Geist_500Medium, Geist_700Bold, Geist_900Black } from '@expo-google-fonts/geist';
-import { GeistMono_400Regular, GeistMono_500Medium, GeistMono_700Bold } from '@expo-google-fonts/geist-mono';
+import { IBMPlexMono_400Regular, IBMPlexMono_500Medium, IBMPlexMono_700Bold } from '@expo-google-fonts/ibm-plex-mono';
 
 // ──────────────────────────────────────────────────────────────
 // THEME
@@ -392,7 +392,7 @@ function WalletsModal({ visible, onClose, wallets, onRemove, onAdd, onRefresh, r
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
             {wallets.length === 0 && (
               <View style={{ padding: 24, alignItems: 'center' }}>
-                <Text style={{ color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 11, letterSpacing: 2 }}>NO WALLETS CONNECTED</Text>
+                <Text style={{ color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 11, letterSpacing: 2 }}>NO WALLETS CONNECTED</Text>
               </View>
             )}
             {wallets.map((w) => (
@@ -483,10 +483,17 @@ const BADGE_COLORS = [
 // MAIN APP
 // ──────────────────────────────────────────────────────────────
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Geist_500Medium, Geist_700Bold, Geist_900Black,
-    GeistMono_400Regular, GeistMono_500Medium, GeistMono_700Bold,
+    IBMPlexMono_400Regular, IBMPlexMono_500Medium, IBMPlexMono_700Bold,
   });
+  // 2s timeout — render with system fonts if Google Fonts CDN is slow/blocked.
+  const [bootTimeoutFired, setBootTimeoutFired] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setBootTimeoutFired(true), 2000);
+    return () => clearTimeout(id);
+  }, []);
+  const canRender = fontsLoaded || fontError || bootTimeoutFired;
 
   const [wallets, setWallets] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -562,7 +569,7 @@ export default function App() {
 
   const youRank = PEERS.filter(p => p.sats > totalSats).length + 1;
 
-  if (!fontsLoaded) {
+  if (!canRender) {
     return (
       <View style={[s.root, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={{ color: C.btc, fontSize: 12, letterSpacing: 4 }}>BOOTING…</Text>
@@ -678,15 +685,15 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   ticker: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.rule, gap: 12 },
   tickerLed: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.btc, shadowColor: C.btc, shadowOpacity: 1, shadowRadius: 4 },
-  tickerKey: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 1.4, marginRight: 4 },
-  tickerVal: { color: C.ink2, fontFamily: 'GeistMono_500Medium', fontSize: 10, letterSpacing: 1.2 },
+  tickerKey: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 1.4, marginRight: 4 },
+  tickerVal: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 1.2 },
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.rule },
   brand: { color: C.ink, fontFamily: 'Geist_900Black', fontSize: 14, letterSpacing: -0.2 },
-  brandSub: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 2 },
+  brandSub: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 2 },
   rankPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.btc },
-  rankPillKey: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 1.6 },
-  rankPillVal: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 11, letterSpacing: 1 },
+  rankPillKey: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 1.6 },
+  rankPillVal: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11, letterSpacing: 1 },
 
   hero: { flexDirection: 'row', position: 'relative' },
   heroCenter: { flex: 1, position: 'relative' },
@@ -695,26 +702,26 @@ const s = StyleSheet.create({
   gutterLeft: { width: 60, borderRightWidth: 1, borderRightColor: C.rule, paddingVertical: 16, gap: 18, alignItems: 'center' },
   gutterRight: { width: 60, borderLeftWidth: 1, borderLeftColor: C.rule, paddingVertical: 16, gap: 18, alignItems: 'center' },
   gauge: { alignItems: 'center', gap: 4 },
-  gaugeLabel: { color: C.ink4, fontFamily: 'GeistMono_500Medium', fontSize: 8, letterSpacing: 1.6 },
-  gaugeValue: { color: C.ink, fontFamily: 'GeistMono_700Bold', fontSize: 11 },
+  gaugeLabel: { color: C.ink4, fontFamily: 'IBMPlexMono_500Medium', fontSize: 8, letterSpacing: 1.6 },
+  gaugeValue: { color: C.ink, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11 },
   gaugeBar: { width: 4, height: 56, backgroundColor: C.bg3, borderWidth: 1, borderColor: C.rule, overflow: 'hidden', justifyContent: 'flex-end' },
   gaugeFill: { width: '100%', backgroundColor: C.btc },
 
-  frameTop: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginBottom: 4 },
-  stackLabel: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 10, letterSpacing: 3.5, marginBottom: 6 },
+  frameTop: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginBottom: 4 },
+  stackLabel: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 3.5, marginBottom: 6 },
   btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 56, letterSpacing: -2.4, textShadowColor: 'rgba(247,147,26,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 22 },
   btcSymbol: { color: C.btcHot, fontFamily: 'Geist_900Black' },
-  satsSub: { color: C.ink2, fontFamily: 'GeistMono_500Medium', fontSize: 12, letterSpacing: 2, marginTop: 14, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
+  satsSub: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 12, letterSpacing: 2, marginTop: 14, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   satsUnit: { color: C.ink4 },
   statusPanel: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.rule, marginTop: 14, backgroundColor: 'rgba(0,0,0,0.55)' },
   statusPanelHot: { borderColor: C.btc },
   statusDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: C.ink3 },
   statusDotHot: { backgroundColor: C.btc },
-  statusText: { color: C.ink2, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 2.6 },
+  statusText: { color: C.ink2, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 2.6 },
   pips: { flexDirection: 'row', gap: 4, marginTop: 14 },
   pip: { width: 22, height: 3, backgroundColor: C.bg3 },
   pipOn: { backgroundColor: C.btc },
-  frameBot: { color: C.btc, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 12 },
+  frameBot: { color: C.btc, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 12 },
 
   actionWrap: { padding: 14, borderTopWidth: 1, borderTopColor: C.rule },
   action: { backgroundColor: C.btc, paddingVertical: 22, alignItems: 'center', justifyContent: 'center' },
@@ -722,19 +729,19 @@ const s = StyleSheet.create({
   actionPressed: { transform: [{ translateY: 3 }] },
   actionLabel: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 16, letterSpacing: 3 },
   actionMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  actionHint: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 1.8 },
+  actionHint: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 1.8 },
   flash: { ...StyleSheet.absoluteFillObject },
 
   awSheet: { backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.btc, maxHeight: '90%' },
   awHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.rule },
   awHandle: { width: 24, height: 3, backgroundColor: C.btc },
 
-  fieldLabel: { color: C.ink3, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 2.4 },
-  input: { color: C.ink, fontFamily: 'GeistMono_500Medium', fontSize: 14, backgroundColor: C.bg2, borderWidth: 1, borderColor: C.rule, paddingHorizontal: 14, paddingVertical: 12, marginTop: 6 },
+  fieldLabel: { color: C.ink3, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 2.4 },
+  input: { color: C.ink, fontFamily: 'IBMPlexMono_500Medium', fontSize: 14, backgroundColor: C.bg2, borderWidth: 1, borderColor: C.rule, paddingHorizontal: 14, paddingVertical: 12, marginTop: 6 },
   inputMulti: { minHeight: 88, textAlignVertical: 'top' },
-  detected: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 2, marginTop: 8 },
-  error: { color: C.danger, fontFamily: 'GeistMono_500Medium', fontSize: 12, marginTop: 10, letterSpacing: 0.5 },
-  privacy: { color: C.ink4, fontFamily: 'GeistMono_400Regular', fontSize: 11, lineHeight: 18, marginTop: 18 },
+  detected: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 2, marginTop: 8 },
+  error: { color: C.danger, fontFamily: 'IBMPlexMono_500Medium', fontSize: 12, marginTop: 10, letterSpacing: 0.5 },
+  privacy: { color: C.ink4, fontFamily: 'IBMPlexMono_400Regular', fontSize: 11, lineHeight: 18, marginTop: 18 },
   connectBtn: { marginTop: 18, backgroundColor: C.btc, paddingVertical: 18, alignItems: 'center' },
   connectBtnDisabled: { backgroundColor: C.bg3 },
   connectTxt: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 14, letterSpacing: 2.5 },
@@ -742,23 +749,23 @@ const s = StyleSheet.create({
 
   walletRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.bg3, gap: 12 },
   walletLabel: { color: C.ink, fontFamily: 'Geist_700Bold', fontSize: 14 },
-  walletSource: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 10, letterSpacing: 1, marginTop: 3 },
-  walletSats: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 13 },
-  removeTxt: { color: C.danger, fontFamily: 'GeistMono_700Bold', fontSize: 9, letterSpacing: 1.6, marginTop: 4 },
+  walletSource: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 1, marginTop: 3 },
+  walletSats: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 13 },
+  removeTxt: { color: C.danger, fontFamily: 'IBMPlexMono_700Bold', fontSize: 9, letterSpacing: 1.6, marginTop: 4 },
 
   lbSheet: { backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.btc },
   lbHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.rule },
   lbHandle: { width: 24, height: 3, backgroundColor: C.btc },
   lbTitle: { color: C.ink, fontFamily: 'Geist_900Black', fontSize: 14, letterSpacing: -0.2 },
-  lbSub: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 2 },
+  lbSub: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 2 },
   lbCloseBtn: { paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.rule },
-  lbCloseTxt: { color: C.ink2, fontFamily: 'GeistMono_700Bold', fontSize: 10, letterSpacing: 1.4 },
+  lbCloseTxt: { color: C.ink2, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 1.4 },
   lbRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.bg3, gap: 14 },
   lbRowYou: { backgroundColor: 'rgba(247,147,26,0.1)', borderLeftWidth: 3, borderLeftColor: C.btc, paddingLeft: 15 },
-  lbRank: { color: C.ink3, fontFamily: 'GeistMono_700Bold', fontSize: 13, width: 48 },
+  lbRank: { color: C.ink3, fontFamily: 'IBMPlexMono_700Bold', fontSize: 13, width: 48 },
   lbName: { color: C.ink, fontFamily: 'Geist_700Bold', fontSize: 14 },
   lbTierRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   lbBadge: { width: 7, height: 7 },
-  lbTierName: { color: C.ink3, fontFamily: 'GeistMono_500Medium', fontSize: 9, letterSpacing: 1.6 },
-  lbSats: { color: C.btc, fontFamily: 'GeistMono_700Bold', fontSize: 13, letterSpacing: 0.4 },
+  lbTierName: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 1.6 },
+  lbSats: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 13, letterSpacing: 0.4 },
 });
