@@ -500,9 +500,17 @@ export default function App() {
   const [walletsOpen, setWalletsOpen] = useState(false);
   const [lbOpen, setLbOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Demo override — set by the − / + side steppers. When non-null, the hero
+  // shows this sats value instead of the wallet sum. Cleared on wallet ops.
+  const [demoSats, setDemoSats] = useState(null);
 
-  const totalSats = wallets.reduce((sum, w) => sum + (w.sats || 0), 0);
+  const liveSats = wallets.reduce((sum, w) => sum + (w.sats || 0), 0);
+  const totalSats = demoSats !== null ? demoSats : liveSats;
   const stateIdx = bucketForSats(totalSats);
+  const stepDemo = (dir) => {
+    const next = Math.max(0, Math.min(STATES.length - 1, stateIdx + dir));
+    setDemoSats(STATES[next].threshold);
+  };
   const cur = STATES[stateIdx];
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -536,6 +544,7 @@ export default function App() {
     const source = { kind, value: input };
     const sats = await fetchBalanceSats(source);
     setWallets(ws => [...ws, { id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`, label, source, sats, fetchedAt: Date.now() }]);
+    setDemoSats(null); // wallet data takes over from any demo override
   }, []);
 
   const removeWallet = useCallback((id) => {
@@ -544,6 +553,7 @@ export default function App() {
 
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
+    setDemoSats(null);
     const updated = await Promise.all(wallets.map(async (w) => {
       try {
         const sats = await fetchBalanceSats(w.source);
@@ -597,6 +607,13 @@ export default function App() {
 
       <View style={[s.hero, { height: heroH }]}>
         <View style={s.gutterLeft}>
+          <Pressable
+            style={({ pressed }) => [s.stepperBtn, stateIdx === 0 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
+            onPress={() => stepDemo(-1)}
+            disabled={stateIdx === 0}
+          >
+            <Text style={s.stepperTxt}>−</Text>
+          </Pressable>
           <Gauge label="THR" value={String(Math.round(thrustPct)).padStart(3,'0')} pct={thrustPct} hot={thrustPct > 50} />
           <Gauge label="FUEL" value={(fuelPct/10).toFixed(1)} pct={fuelPct} hot={fuelPct > 50} />
         </View>
@@ -627,6 +644,13 @@ export default function App() {
           </View>
         </View>
         <View style={s.gutterRight}>
+          <Pressable
+            style={({ pressed }) => [s.stepperBtn, stateIdx === STATES.length - 1 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
+            onPress={() => stepDemo(+1)}
+            disabled={stateIdx === STATES.length - 1}
+          >
+            <Text style={s.stepperTxt}>+</Text>
+          </Pressable>
           <Gauge label="PSI" value={String(Math.round(psiPct * 4.7)).padStart(3,'0')} pct={psiPct} hot={psiPct > 50} />
           <Gauge label="TEMP" value={String(Math.round(72 + tempPct * 28)).padStart(3,'0')} pct={tempPct} hot={tempPct > 50} />
         </View>
@@ -699,8 +723,18 @@ const s = StyleSheet.create({
   heroCenter: { flex: 1, position: 'relative' },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
 
-  gutterLeft: { width: 60, borderRightWidth: 1, borderRightColor: C.rule, paddingVertical: 16, gap: 18, alignItems: 'center' },
-  gutterRight: { width: 60, borderLeftWidth: 1, borderLeftColor: C.rule, paddingVertical: 16, gap: 18, alignItems: 'center' },
+  gutterLeft: { width: 60, borderRightWidth: 1, borderRightColor: C.rule, paddingVertical: 14, gap: 14, alignItems: 'center' },
+  gutterRight: { width: 60, borderLeftWidth: 1, borderLeftColor: C.rule, paddingVertical: 14, gap: 14, alignItems: 'center' },
+  stepperBtn: {
+    width: 44, height: 44,
+    backgroundColor: C.btc,
+    alignItems: 'center', justifyContent: 'center',
+    // brutalist: square corners, key-press shadow
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 0, shadowOffset: { width: 0, height: 3 },
+  },
+  stepperBtnDim: { backgroundColor: C.bg3 },
+  stepperBtnPressed: { transform: [{ translateY: 2 }] },
+  stepperTxt: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 28, lineHeight: 28, includeFontPadding: false },
   gauge: { alignItems: 'center', gap: 4 },
   gaugeLabel: { color: C.ink4, fontFamily: 'IBMPlexMono_500Medium', fontSize: 8, letterSpacing: 1.6 },
   gaugeValue: { color: C.ink, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11 },
