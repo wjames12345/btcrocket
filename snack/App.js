@@ -81,7 +81,7 @@ const PEERS = [
 // ──────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────────────
-const fmtBtc = (sats) => (sats / 1e8).toFixed(8);
+const fmtBtc = (sats) => (sats / 1e8).toFixed(3);
 const fmtSats = (sats) => sats.toLocaleString('en-GB');
 const fmtShortSats = (sats) => {
   if (sats >= 1e11) return (sats / 1e8).toFixed(0) + ' BTC';
