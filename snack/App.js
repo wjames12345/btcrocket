@@ -36,6 +36,12 @@ import Svg, {
 } from 'react-native-svg';
 import { useFonts, Geist_500Medium, Geist_700Bold, Geist_900Black } from '@expo-google-fonts/geist';
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium, IBMPlexMono_700Bold } from '@expo-google-fonts/ibm-plex-mono';
+// Optional haptics — wrapped so Snack/web still runs if the module isn't available.
+let Haptics = null;
+try { Haptics = require('expo-haptics'); } catch (e) { /* graceful no-op on web */ }
+const hapticLight = () => Haptics?.impactAsync?.(Haptics.ImpactFeedbackStyle.Light);
+const hapticHeavy = () => Haptics?.impactAsync?.(Haptics.ImpactFeedbackStyle.Heavy);
+const hapticSuccess = () => Haptics?.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
 
 // ──────────────────────────────────────────────────────────────
 // THEME
@@ -48,15 +54,18 @@ const C = {
   danger: '#ff4d4d',
 };
 
-// 6 visible levels. The TAKEOFF level fires at 10 BTC — the rocket lifts off the pad.
+// 6 levels. Threshold curve tuned so that with +1 BTC admin taps, each tap
+// from 0→6 BTC moves you through the lower five levels at a satisfying pace,
+// then 6→10 BTC is a 4-tap "build-up" to the TAKEOFF cinematic at 10 BTC.
 const STATES = [
-  { name: 'DEAD',     label: 'DEAD ROCKET',         threshold: 0,             fx: { smoke: 0,  sparks: 0,  flame: 0,  embers: 0 } },
-  { name: 'IGNITION', label: 'IGNITION SEQUENCE',   threshold: 100_000,       fx: { smoke: 1,  sparks: 1,  flame: 0,  embers: 0 } },
-  { name: 'SMOKING',  label: 'SMOKING',             threshold: 1_000_000,     fx: { smoke: 4,  sparks: 0,  flame: 0,  embers: 0 } },
-  { name: 'SPARKING', label: 'SPARKING',            threshold: 10_000_000,    fx: { smoke: 3,  sparks: 6,  flame: 1,  embers: 2 } },
-  { name: 'BLASTING', label: 'BLASTING FLAMES',     threshold: 100_000_000,   fx: { smoke: 5,  sparks: 3,  flame: 6,  embers: 4 } },
-  { name: 'TAKEOFF',  label: 'LIFTOFF · ASCENDING', threshold: 1_000_000_000, fx: { smoke: 10, sparks: 10, flame: 10, embers: 10 } },
+  { name: 'DEAD',     threshold: 0 },                                                    // 0 BTC
+  { name: 'IGNITION', threshold:     50_000_000, fx: { smoke: 1,  sparks: 1,  flame: 0,  embers: 0 } },  // 0.5 BTC
+  { name: 'SMOKING',  threshold:    100_000_000, fx: { smoke: 4,  sparks: 0,  flame: 0,  embers: 0 } },  // 1 BTC
+  { name: 'SPARKING', threshold:    300_000_000, fx: { smoke: 3,  sparks: 6,  flame: 1,  embers: 2 } },  // 3 BTC
+  { name: 'BLASTING', threshold:    600_000_000, fx: { smoke: 5,  sparks: 3,  flame: 6,  embers: 4 } },  // 6 BTC
+  { name: 'TAKEOFF',  threshold:  1_000_000_000, fx: { smoke: 10, sparks: 10, flame: 10, embers: 10 } }, // 10 BTC
 ];
+STATES[0].fx = { smoke: 0, sparks: 0, flame: 0, embers: 0 };
 
 // 28 silly crypto pseudonyms. Order is roughly descending sats but each row gets a random-feel jitter.
 const PEERS = [
@@ -157,10 +166,10 @@ function useParticles(stateIdx, anchorY) {
           p[kind].push(factory(intensity));
         }
       };
-      emit('smoke', fx.smoke, (i) => ({ x: (Math.random()-0.5)*80, y: anchorY, vx: (Math.random()-0.5)*0.5, vy: -0.25-Math.random()*0.5-i*0.04, r: 14+Math.random()*12, life: 0, max: 100+Math.random()*60 }));
-      emit('sparks', fx.sparks, (i) => { const a = -Math.PI/2 + (Math.random()-0.5)*Math.PI; const s = 2+Math.random()*4+i*0.3; return { x: (Math.random()-0.5)*14, y: anchorY, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 0, max: 26+Math.random()*18 }; });
-      emit('flame', fx.flame, (i) => ({ x: (Math.random()-0.5)*18, y: anchorY, vy: -1.4-Math.random()*1.4-i*0.12, r: 12+Math.random()*8+i*1.2, life: 0, max: 22+Math.random()*12 }));
-      emit('embers', fx.embers, () => ({ x: (Math.random()-0.5)*50, y: anchorY+6, vx: (Math.random()-0.5)*1.2, vy: 0.6+Math.random()*2, r: 1+Math.random()*1.6, life: 0, max: 28+Math.random()*30 }));
+      emit('smoke', fx.smoke, (i) => ({ x: (Math.random()-0.5)*110, y: anchorY, vx: (Math.random()-0.5)*0.6, vy: -0.3-Math.random()*0.6-i*0.05, r: 20+Math.random()*18, life: 0, max: 120+Math.random()*70 }));
+      emit('sparks', fx.sparks, (i) => { const a = -Math.PI/2 + (Math.random()-0.5)*Math.PI; const s = 2.5+Math.random()*5+i*0.35; return { x: (Math.random()-0.5)*20, y: anchorY, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 0, max: 32+Math.random()*22 }; });
+      emit('flame', fx.flame, (i) => ({ x: (Math.random()-0.5)*24, y: anchorY, vy: -1.7-Math.random()*1.6-i*0.14, r: 18+Math.random()*12+i*1.4, life: 0, max: 26+Math.random()*16 }));
+      emit('embers', fx.embers, () => ({ x: (Math.random()-0.5)*64, y: anchorY+8, vx: (Math.random()-0.5)*1.4, vy: 0.7+Math.random()*2.4, r: 1.2+Math.random()*2, life: 0, max: 34+Math.random()*36 }));
       const stepArr = (arr, g) => {
         for (let i = arr.length-1; i >= 0; i--) {
           const it = arr[i];
@@ -184,13 +193,13 @@ function useParticles(stateIdx, anchorY) {
 // ──────────────────────────────────────────────────────────────
 function Rocket({ stateIdx, width, height }) {
   const cx = width / 2;
-  const engineY = height * 0.74;
-  const bodyTop = height * 0.22;
-  const bodyH = engineY - 4 - bodyTop;
-  const bodyW = 26 + stateIdx * 4;
+  const engineY = height * 0.78;
+  const bodyTop = height * 0.10;        // taller body extending further up
+  const bodyH = engineY - 6 - bodyTop;
+  const bodyW = 44 + stateIdx * 6;      // wider, scales more per level
   // At TAKEOFF (state 5, 10 BTC) the rocket lifts dramatically off the pad.
   // Particles still emit from the original engineY so the flame becomes a trail.
-  const ascend = stateIdx === 5 ? -Math.round(height * 0.18) : 0;
+  const ascend = stateIdx === 5 ? -Math.round(height * 0.22) : 0;
 
   if (stateIdx === 0) {
     return (
@@ -546,6 +555,7 @@ export default function App() {
   // (so Binance + MEXC each grow by 0.5 BTC per tap). Demo override is cleared
   // so the rocket reflects the live wallet sum directly.
   const adjustBtc = (deltaBtc) => {
+    hapticLight();
     const deltaSats = Math.round(deltaBtc * 1e8);
     setDemoSats(null);
     setWallets(ws => {
@@ -566,27 +576,53 @@ export default function App() {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const flashAnim = useRef(new Animated.Value(0)).current;
   const prevTotalRef = useRef(totalSats);
+  const prevStateIdxRef = useRef(stateIdx);
 
-  // pulse the number when total changes
+  // Pulse the number whenever total changes; fire a bigger celebration when
+  // the user crosses into a new tier (haptic + brighter flash + amplified pulse).
   useEffect(() => {
     const prev = prevTotalRef.current;
+    const prevStage = prevStateIdxRef.current;
     if (totalSats !== prev) {
       const up = totalSats > prev;
+      const tierUp = stateIdx > prevStage;
+      const isTakeoff = tierUp && stateIdx === STATES.length - 1;
+
+      // Number pulse — amplified on tier-up, dramatic on takeoff
+      const peak = isTakeoff ? 1.18 : tierUp ? 1.12 : up ? 1.06 : 0.96;
       Animated.sequence([
-        Animated.timing(scaleAnim, { toValue: up ? 1.08 : 0.94, duration: 100, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: peak, duration: isTakeoff ? 200 : 100, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: isTakeoff ? 3 : 4, useNativeDriver: true }),
       ]).start();
-      flashAnim.setValue(1);
-      Animated.timing(flashAnim, { toValue: 0, duration: 360, useNativeDriver: true }).start();
+
+      // Flash overlay — brighter and longer on tier-up
+      flashAnim.setValue(tierUp ? 1.4 : 1);
+      Animated.timing(flashAnim, { toValue: 0, duration: tierUp ? 600 : 360, useNativeDriver: true }).start();
+
+      // Haptics
+      if (isTakeoff) hapticSuccess();
+      else if (tierUp) hapticHeavy();
+
       prevTotalRef.current = totalSats;
+      prevStateIdxRef.current = stateIdx;
     }
-  }, [totalSats]);
+  }, [totalSats, stateIdx]);
 
   const win = Dimensions.get('window');
   const heroH = Math.min(win.height * 0.66, 680);
-  const rocketW = win.width - 144; // two 72-wide gutters
-  const anchorY = heroH * 0.74;
+  const rocketW = win.width - 128; // two 64-wide gutters
+  const anchorY = heroH * 0.78;
   const pools = useParticles(stateIdx, anchorY);
+
+  // Staggered boot reveal (Disney "anticipation" — establish each layer in turn)
+  const bootAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(bootAnim, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, []);
+  const bootOpacity = (delay) => bootAnim.interpolate({
+    inputRange: [0, Math.min(1, delay), 1],
+    outputRange: [0, 0, 1],
+  });
 
   const addWallet = useCallback(async (input, label) => {
     const kind = detectKind(input);
@@ -641,9 +677,11 @@ export default function App() {
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-      <Ticker />
+      <Animated.View style={{ opacity: bootOpacity(0) }}>
+        <Ticker />
+      </Animated.View>
 
-      <View style={s.header}>
+      <Animated.View style={[s.header, { opacity: bootOpacity(0.15) }]}>
         <View>
           <Text style={s.brand}>BTC<Text style={{ color: C.btc }}>/</Text>ROCKET</Text>
           {/* No descriptive subtitle — the animation itself communicates state */}
@@ -653,9 +691,9 @@ export default function App() {
           <Text style={s.rankPillVal}>#{youRank.toLocaleString('en-GB')}</Text>
           <Text style={s.rankPillKey}>↗</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={[s.hero, { height: heroH }]}>
+      <Animated.View style={[s.hero, { height: heroH, opacity: bootOpacity(0.3) }]}>
         <View style={s.gutterLeft}>
           <Pressable
             style={({ pressed }) => [s.stepperBtn, totalSats <= 0 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
@@ -687,10 +725,10 @@ export default function App() {
             <Text style={s.stepperTxt}>+</Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Bottom split toolbar: ME | LEADERBOARD */}
-      <View style={s.bottomBar}>
+      <Animated.View style={[s.bottomBar, { opacity: bootOpacity(0.5) }]}>
         <Pressable
           style={({ pressed }) => [s.bottomBtn, pressed && s.bottomBtnPressed]}
           onPress={() => setWalletsOpen(true)}
@@ -706,7 +744,7 @@ export default function App() {
           <Text style={s.bottomBtnTxt}>LEADERBOARD</Text>
           <Text style={s.bottomBtnSub}>RANK #{youRank.toLocaleString('en-GB')}</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <Animated.View
         pointerEvents="none"
@@ -752,18 +790,20 @@ const s = StyleSheet.create({
   heroCenter: { flex: 1, position: 'relative' },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
 
-  gutterLeft: { width: 72, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  gutterRight: { width: 72, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  gutterLeft: { width: 64, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  gutterRight: { width: 64, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  // Outline-style stepper. Visually subordinate to the rocket; only fills with
+  // orange while pressed. Functionally accessible, perceptually quiet.
   stepperBtn: {
-    width: 60, height: 60,
-    backgroundColor: C.btc,
+    width: 48, height: 48,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: C.btc,
     alignItems: 'center', justifyContent: 'center',
-    // brutalist: square corners, key-press shadow
-    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 0, shadowOffset: { width: 0, height: 4 },
   },
-  stepperBtnDim: { backgroundColor: C.bg3 },
-  stepperBtnPressed: { transform: [{ translateY: 3 }] },
-  stepperTxt: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 36, lineHeight: 36, includeFontPadding: false },
+  stepperBtnDim: { borderColor: C.ink4 },
+  stepperBtnPressed: { backgroundColor: 'rgba(247,147,26,0.15)' },
+  stepperTxt: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 28, lineHeight: 28, includeFontPadding: false },
   gauge: { alignItems: 'center', gap: 4 },
   gaugeLabel: { color: C.ink4, fontFamily: 'IBMPlexMono_500Medium', fontSize: 8, letterSpacing: 1.6 },
   gaugeValue: { color: C.ink, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11 },
@@ -772,8 +812,21 @@ const s = StyleSheet.create({
 
   frameTop: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginBottom: 4 },
   stackLabel: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 3.5, marginBottom: 6 },
-  // Hero number — bigger now that all the descriptor text is gone.
-  btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 96, letterSpacing: -4, textShadowColor: 'rgba(247,147,26,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 36 },
+  // Hero number — disciplined typography. Tabular nums so the digits don't
+  // jitter on change. Tight letter spacing for the brand-y display feel.
+  // Shadow is the only "decoration" — gives the orange a halo against black.
+  btcAmount: {
+    color: C.btc,
+    fontFamily: 'Geist_900Black',
+    fontSize: 96,
+    letterSpacing: -4,
+    lineHeight: 96,
+    includeFontPadding: false,
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(247,147,26,0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 32,
+  },
   btcSymbol: { color: C.btcHot, fontFamily: 'Geist_900Black' },
   satsSub: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 12, letterSpacing: 2, marginTop: 14, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   satsUnit: { color: C.ink4 },
