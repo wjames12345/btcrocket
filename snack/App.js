@@ -81,7 +81,16 @@ const PEERS = [
 // ──────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────────────
-const fmtBtc = (sats) => (sats / 1e8).toFixed(3);
+// Smart decimals: strip trailing zeros so whole BTC reads "1" not "1.000",
+// but keep precision when it matters (e.g. 0.0034 BTC stays 0.0034, not 0).
+const fmtBtc = (sats) => {
+  if (!sats || sats === 0) return '0';
+  const btc = sats / 1e8;
+  const decimals = btc < 0.01 ? 6 : 3;
+  const s = btc.toFixed(decimals);
+  const stripped = s.replace(/\.?0+$/, '');
+  return stripped || s;
+};
 const fmtSats = (sats) => sats.toLocaleString('en-GB');
 const fmtShortSats = (sats) => {
   if (sats >= 1e11) return (sats / 1e8).toFixed(0) + ' BTC';
@@ -268,7 +277,13 @@ function Ticker() {
   useEffect(() => {
     Animated.loop(Animated.timing(x, { toValue: -W*2, duration: 32000, easing: Easing.linear, useNativeDriver: true })).start();
   }, [W]);
-  const items = [['BLOCK','887,432'], ['FEE','4 SAT/VB'], ['MEMPOOL','1.18 GB'], ['HASHRATE','624 EH/S'], ['HALVING','1,247 BLOCKS'], ['SUPPLY','19.85M / 21M']];
+  const items = [
+    ['MSTR',    '$352.40 ▲ 2.3%'],
+    ['STRETCH', '$98.20 ▼ 1.1%'],
+    ['BTC',     '$98,420 ▲ 0.8%'],
+    ['NASDAQ',  '21,847 ▲ 0.4%'],
+    ['NVIDIA',  '$147.20 ▲ 1.7%'],
+  ];
   return (
     <View style={s.ticker}>
       <View style={s.tickerLed} />
@@ -495,7 +510,11 @@ export default function App() {
   }, []);
   const canRender = fontsLoaded || fontError || bootTimeoutFired;
 
-  const [wallets, setWallets] = useState([]);
+  // Pre-populated with two example wallets for demo. Replace by tapping "+ ADD WALLET".
+  const [wallets, setWallets] = useState([
+    { id: 'binance-demo', label: 'Binance', source: { kind: 'address', value: 'bc1qbinance-example-address-display-only' }, sats: 0, fetchedAt: Date.now() },
+    { id: 'mexc-demo',    label: 'MEXC',    source: { kind: 'address', value: 'bc1qmexc-example-address-display-only'    }, sats: 0, fetchedAt: Date.now() },
+  ]);
   const [addOpen, setAddOpen] = useState(false);
   const [walletsOpen, setWalletsOpen] = useState(false);
   const [lbOpen, setLbOpen] = useState(false);
@@ -533,8 +552,8 @@ export default function App() {
   }, [totalSats]);
 
   const win = Dimensions.get('window');
-  const heroH = Math.min(win.height * 0.58, 560);
-  const rocketW = win.width - 120;
+  const heroH = Math.min(win.height * 0.66, 680);
+  const rocketW = win.width - 144; // two 72-wide gutters
   const anchorY = heroH * 0.74;
   const pools = useParticles(stateIdx, anchorY);
 
@@ -596,7 +615,7 @@ export default function App() {
       <View style={s.header}>
         <View>
           <Text style={s.brand}>BTC<Text style={{ color: C.btc }}>/</Text>ROCKET</Text>
-          <Text style={s.brandSub}>MISSION CONTROL · V0.4</Text>
+          <Text style={s.brandSub}>{cur.label}</Text>
         </View>
         <Pressable style={s.rankPill} onPress={() => setLbOpen(true)}>
           <Text style={s.rankPillKey}>RANK</Text>
@@ -614,8 +633,6 @@ export default function App() {
           >
             <Text style={s.stepperTxt}>−</Text>
           </Pressable>
-          <Gauge label="THR" value={String(Math.round(thrustPct)).padStart(3,'0')} pct={thrustPct} hot={thrustPct > 50} />
-          <Gauge label="FUEL" value={(fuelPct/10).toFixed(1)} pct={fuelPct} hot={fuelPct > 50} />
         </View>
         <View style={s.heroCenter}>
           <Rocket stateIdx={stateIdx} width={rocketW} height={heroH} />
@@ -623,8 +640,8 @@ export default function App() {
           <View style={s.overlay} pointerEvents="none">
             <Text style={s.frameTop}>┌─ YOUR STACK ─┐</Text>
             <Text style={s.stackLabel}>{wallets.length > 0 ? 'LIVE · MEMPOOL.SPACE' : 'CONNECT TO BEGIN'}</Text>
-            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <Text style={s.btcAmount}>
+            <Animated.View style={{ transform: [{ scale: scaleAnim }], maxWidth: '100%' }}>
+              <Text style={s.btcAmount} adjustsFontSizeToFit numberOfLines={1}>
                 <Text style={s.btcSymbol}>₿</Text> {fmtBtc(totalSats)}
               </Text>
             </Animated.View>
@@ -640,7 +657,9 @@ export default function App() {
                 <View key={i} style={[s.pip, i <= stateIdx && s.pipOn]} />
               ))}
             </View>
-            <Text style={s.frameBot}>└─ {wallets.length} {wallets.length === 1 ? 'WALLET' : 'WALLETS'} ─┘</Text>
+            <Text style={s.frameBot}>
+              └─ {wallets.length === 0 ? 'NO WALLETS' : `${wallets.length} CONNECTED · ${wallets.slice(0,3).map(w => w.label.toUpperCase()).join(' · ')}${wallets.length > 3 ? ` +${wallets.length - 3}` : ''}`} ─┘
+            </Text>
           </View>
         </View>
         <View style={s.gutterRight}>
@@ -651,8 +670,6 @@ export default function App() {
           >
             <Text style={s.stepperTxt}>+</Text>
           </Pressable>
-          <Gauge label="PSI" value={String(Math.round(psiPct * 4.7)).padStart(3,'0')} pct={psiPct} hot={psiPct > 50} />
-          <Gauge label="TEMP" value={String(Math.round(72 + tempPct * 28)).padStart(3,'0')} pct={tempPct} hot={tempPct > 50} />
         </View>
       </View>
 
@@ -674,7 +691,7 @@ export default function App() {
           </View>
         )}
         <View style={s.actionMeta}>
-          <Text style={s.actionHint}>{wallets.length === 0 ? 'PASTE XPUB OR BTC ADDRESS' : `${wallets.length} WALLET${wallets.length === 1 ? '' : 'S'} · AUTO-SYNC 5MIN`}</Text>
+          <Text style={s.actionHint}>{wallets.length === 0 ? 'PASTE XPUB OR BTC ADDRESS' : `${wallets.map(w => w.label.toUpperCase()).join(' · ')} · LIVE`}</Text>
           <Text style={s.actionHint}>READ-ONLY</Text>
         </View>
       </View>
@@ -713,8 +730,8 @@ const s = StyleSheet.create({
   tickerVal: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 1.2 },
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.rule },
-  brand: { color: C.ink, fontFamily: 'Geist_900Black', fontSize: 14, letterSpacing: -0.2 },
-  brandSub: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 2 },
+  brand: { color: C.ink, fontFamily: 'Geist_900Black', fontSize: 17, letterSpacing: -0.3 },
+  brandSub: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 2.6, marginTop: 4, textTransform: 'uppercase' },
   rankPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.btc },
   rankPillKey: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 10, letterSpacing: 1.6 },
   rankPillVal: { color: C.btc, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11, letterSpacing: 1 },
@@ -723,18 +740,18 @@ const s = StyleSheet.create({
   heroCenter: { flex: 1, position: 'relative' },
   overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
 
-  gutterLeft: { width: 60, borderRightWidth: 1, borderRightColor: C.rule, paddingVertical: 14, gap: 14, alignItems: 'center' },
-  gutterRight: { width: 60, borderLeftWidth: 1, borderLeftColor: C.rule, paddingVertical: 14, gap: 14, alignItems: 'center' },
+  gutterLeft: { width: 72, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  gutterRight: { width: 72, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   stepperBtn: {
-    width: 44, height: 44,
+    width: 60, height: 60,
     backgroundColor: C.btc,
     alignItems: 'center', justifyContent: 'center',
     // brutalist: square corners, key-press shadow
-    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 0, shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 0, shadowOffset: { width: 0, height: 4 },
   },
   stepperBtnDim: { backgroundColor: C.bg3 },
-  stepperBtnPressed: { transform: [{ translateY: 2 }] },
-  stepperTxt: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 28, lineHeight: 28, includeFontPadding: false },
+  stepperBtnPressed: { transform: [{ translateY: 3 }] },
+  stepperTxt: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 36, lineHeight: 36, includeFontPadding: false },
   gauge: { alignItems: 'center', gap: 4 },
   gaugeLabel: { color: C.ink4, fontFamily: 'IBMPlexMono_500Medium', fontSize: 8, letterSpacing: 1.6 },
   gaugeValue: { color: C.ink, fontFamily: 'IBMPlexMono_700Bold', fontSize: 11 },
@@ -743,7 +760,7 @@ const s = StyleSheet.create({
 
   frameTop: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginBottom: 4 },
   stackLabel: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 3.5, marginBottom: 6 },
-  btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 56, letterSpacing: -2.4, textShadowColor: 'rgba(247,147,26,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 22 },
+  btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 80, letterSpacing: -3.2, textShadowColor: 'rgba(247,147,26,0.55)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 28 },
   btcSymbol: { color: C.btcHot, fontFamily: 'Geist_900Black' },
   satsSub: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 12, letterSpacing: 2, marginTop: 14, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   satsUnit: { color: C.ink4 },
