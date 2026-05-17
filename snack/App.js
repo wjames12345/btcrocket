@@ -48,34 +48,46 @@ const C = {
   danger: '#ff4d4d',
 };
 
-// 7 visible flame states the LIVE wallet balance maps into.
+// 6 visible levels. The TAKEOFF level fires at 10 BTC — the rocket lifts off the pad.
 const STATES = [
-  { name: 'DEAD',         label: 'DEAD ROCKET',          threshold: 0,             fx: { smoke: 0,  sparks: 0,  flame: 0,  embers: 0 } },
-  { name: 'IGNITION',     label: 'IGNITION SEQUENCE',    threshold: 100_000,       fx: { smoke: 1,  sparks: 1,  flame: 0,  embers: 0 } },
-  { name: 'SMOKING',      label: 'SMOKING',              threshold: 1_000_000,     fx: { smoke: 4,  sparks: 0,  flame: 0,  embers: 0 } },
-  { name: 'SPARKING',     label: 'SPARKING',             threshold: 10_000_000,    fx: { smoke: 3,  sparks: 6,  flame: 1,  embers: 2 } },
-  { name: 'BLASTING',     label: 'BLASTING FLAMES',      threshold: 100_000_000,   fx: { smoke: 5,  sparks: 3,  flame: 6,  embers: 4 } },
-  { name: 'ROARING',      label: 'ROARING FLAMES',       threshold: 1_000_000_000, fx: { smoke: 7,  sparks: 5,  flame: 8,  embers: 7 } },
-  { name: 'MAXIMUM BURN', label: 'ROARING EVERYTHING',   threshold: 10_000_000_000,fx: { smoke: 10, sparks: 10, flame: 10, embers: 10 } },
+  { name: 'DEAD',     label: 'DEAD ROCKET',         threshold: 0,             fx: { smoke: 0,  sparks: 0,  flame: 0,  embers: 0 } },
+  { name: 'IGNITION', label: 'IGNITION SEQUENCE',   threshold: 100_000,       fx: { smoke: 1,  sparks: 1,  flame: 0,  embers: 0 } },
+  { name: 'SMOKING',  label: 'SMOKING',             threshold: 1_000_000,     fx: { smoke: 4,  sparks: 0,  flame: 0,  embers: 0 } },
+  { name: 'SPARKING', label: 'SPARKING',            threshold: 10_000_000,    fx: { smoke: 3,  sparks: 6,  flame: 1,  embers: 2 } },
+  { name: 'BLASTING', label: 'BLASTING FLAMES',     threshold: 100_000_000,   fx: { smoke: 5,  sparks: 3,  flame: 6,  embers: 4 } },
+  { name: 'TAKEOFF',  label: 'LIFTOFF · ASCENDING', threshold: 1_000_000_000, fx: { smoke: 10, sparks: 10, flame: 10, embers: 10 } },
 ];
 
+// 28 silly crypto pseudonyms. Order is roughly descending sats but each row gets a random-feel jitter.
 const PEERS = [
-  { name: 'HODLForever2140', sats: 210_000_000_000 }, { name: '21MillionMax',    sats: 168_000_000_000 },
-  { name: 'CitadelMaximus',  sats:  98_400_000_000 }, { name: 'diamond_hands',   sats:  64_200_000_000 },
-  { name: 'SatoshisHeir',    sats:  41_800_000_000 }, { name: 'OrangePilled',    sats:  18_900_000_000 },
-  { name: 'low_time_pref',   sats:  12_400_000_000 }, { name: 'NeverSellBottom', sats:   7_300_000_000 },
-  { name: 'stack_til_dead',  sats:   4_900_000_000 }, { name: 'csw_skeptic',     sats:   3_100_000_000 },
-  { name: 'mempool_warrior', sats:   2_400_000_000 }, { name: 'plebs_unite',     sats:   1_750_000_000 },
-  { name: 'OPRETURN42',      sats:     920_000_000 }, { name: 'cold_storage',    sats:     610_000_000 },
-  { name: 'NodeRunner_UK',   sats:     410_000_000 }, { name: 'multisig_or_die', sats:     290_000_000 },
-  { name: 'KeyPair_94',      sats:     180_000_000 }, { name: 'sat_stacker',     sats:     120_000_000 },
-  { name: 'first_7M_sats',   sats:      72_400_000 }, { name: 'taproot_enjoyer', sats:      48_200_000 },
-  { name: 'sound_money_max', sats:      31_100_000 }, { name: 'fiat_refugee',    sats:      19_800_000 },
-  { name: 'BlockSpace4Life', sats:      12_400_000 }, { name: 'satoshi_nak',     sats:       7_900_000 },
-  { name: 'hashing_away',    sats:       4_700_000 }, { name: 'orange_coin',     sats:       2_900_000 },
-  { name: 'pleb_node_22',    sats:       1_650_000 }, { name: 'first_M_sats',    sats:       1_050_000 },
-  { name: 'just_a_few',      sats:         470_000 }, { name: 'starting_my',     sats:         110_000 },
-  { name: 'sat_curious',     sats:          42_000 },
+  { name: 'LamboMode2030',       sats: 184_000_000_000 },
+  { name: 'MoonOrDieTrying',     sats: 127_500_000_000 },
+  { name: 'PaperHandsAA',        sats:  62_400_000_000 },
+  { name: 'WAGMI_Forever',       sats:  44_100_000_000 },
+  { name: 'DegenKing69',         sats:  29_800_000_000 },
+  { name: 'LaserEyesOn',         sats:  19_200_000_000 },
+  { name: 'NotYourKeysGuy',      sats:  12_700_000_000 },
+  { name: 'BananaStandard',      sats:   8_900_000_000 },
+  { name: 'ETHCemeteryClub',     sats:   5_800_000_000 },
+  { name: 'HFSP_BTC_only',       sats:   3_950_000_000 },
+  { name: 'RugPullSurvivor',     sats:   2_700_000_000 },
+  { name: 'OrangePillCertified', sats:   1_850_000_000 },
+  { name: 'StonecoldPleb',       sats:   1_120_000_000 },
+  { name: 'NgmiNoCoiner',        sats:     780_000_000 },
+  { name: 'FUDproof_xyz',        sats:     540_000_000 },
+  { name: 'WhaleAlertCEO',       sats:     360_000_000 },
+  { name: 'GMSerEveryone',       sats:     240_000_000 },
+  { name: 'TraderJoe_69',        sats:     162_000_000 },
+  { name: 'LowestTimePref',      sats:     108_000_000 },
+  { name: 'TrustlessTina',       sats:      71_500_000 },
+  { name: 'HodlBabyHodl',        sats:      44_200_000 },
+  { name: 'BlockchainSherlock',  sats:      28_700_000 },
+  { name: 'WaitingForGodot',     sats:      17_400_000 },
+  { name: 'CapitulationKid',     sats:      10_300_000 },
+  { name: 'SatoshiVibes',        sats:       6_100_000 },
+  { name: 'BTCsupremacist',      sats:       3_400_000 },
+  { name: 'PlebNodeRunner',      sats:       1_750_000 },
+  { name: 'SatCurious_99',       sats:         480_000 },
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -174,7 +186,9 @@ function Rocket({ stateIdx, width, height }) {
   const bodyTop = height * 0.22;
   const bodyH = engineY - 4 - bodyTop;
   const bodyW = 26 + stateIdx * 4;
-  const ascend = stateIdx >= 6 ? -10 : 0;
+  // At TAKEOFF (state 5, 10 BTC) the rocket lifts dramatically off the pad.
+  // Particles still emit from the original engineY so the flame becomes a trail.
+  const ascend = stateIdx === 5 ? -Math.round(height * 0.18) : 0;
 
   if (stateIdx === 0) {
     return (
@@ -526,9 +540,25 @@ export default function App() {
   const liveSats = wallets.reduce((sum, w) => sum + (w.sats || 0), 0);
   const totalSats = demoSats !== null ? demoSats : liveSats;
   const stateIdx = bucketForSats(totalSats);
-  const stepDemo = (dir) => {
-    const next = Math.max(0, Math.min(STATES.length - 1, stateIdx + dir));
-    setDemoSats(STATES[next].threshold);
+
+  // Admin mode: + adds 1 BTC, − removes 1 BTC. Distributed across all wallets
+  // (so Binance + MEXC each grow by 0.5 BTC per tap). Demo override is cleared
+  // so the rocket reflects the live wallet sum directly.
+  const adjustBtc = (deltaBtc) => {
+    const deltaSats = Math.round(deltaBtc * 1e8);
+    setDemoSats(null);
+    setWallets(ws => {
+      let next = ws;
+      if (next.length === 0) {
+        next = [{ id: 'admin-stack', label: 'Admin', source: { kind: 'address', value: 'admin-virtual' }, sats: 0, fetchedAt: Date.now() }];
+      }
+      const perWallet = Math.floor(deltaSats / next.length);
+      const remainder = deltaSats - perWallet * next.length;
+      return next.map((w, i) => ({
+        ...w,
+        sats: Math.max(0, (w.sats || 0) + perWallet + (i === 0 ? remainder : 0)),
+      }));
+    });
   };
   const cur = STATES[stateIdx];
 
@@ -627,9 +657,9 @@ export default function App() {
       <View style={[s.hero, { height: heroH }]}>
         <View style={s.gutterLeft}>
           <Pressable
-            style={({ pressed }) => [s.stepperBtn, stateIdx === 0 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
-            onPress={() => stepDemo(-1)}
-            disabled={stateIdx === 0}
+            style={({ pressed }) => [s.stepperBtn, totalSats <= 0 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
+            onPress={() => adjustBtc(-1)}
+            disabled={totalSats <= 0}
           >
             <Text style={s.stepperTxt}>−</Text>
           </Pressable>
@@ -639,7 +669,6 @@ export default function App() {
           <ParticleLayer pools={pools} width={rocketW} anchorY={anchorY} />
           <View style={s.overlay} pointerEvents="none">
             <Text style={s.frameTop}>┌─ YOUR STACK ─┐</Text>
-            <Text style={s.stackLabel}>{wallets.length > 0 ? 'LIVE · MEMPOOL.SPACE' : 'CONNECT TO BEGIN'}</Text>
             <Animated.View style={{ transform: [{ scale: scaleAnim }], maxWidth: '100%' }}>
               <Text style={s.btcAmount} adjustsFontSizeToFit numberOfLines={1}>
                 <Text style={s.btcSymbol}>₿</Text> {fmtBtc(totalSats)}
@@ -664,36 +693,31 @@ export default function App() {
         </View>
         <View style={s.gutterRight}>
           <Pressable
-            style={({ pressed }) => [s.stepperBtn, stateIdx === STATES.length - 1 && s.stepperBtnDim, pressed && s.stepperBtnPressed]}
-            onPress={() => stepDemo(+1)}
-            disabled={stateIdx === STATES.length - 1}
+            style={({ pressed }) => [s.stepperBtn, pressed && s.stepperBtnPressed]}
+            onPress={() => adjustBtc(+1)}
           >
             <Text style={s.stepperTxt}>+</Text>
           </Pressable>
         </View>
       </View>
 
-      <View style={s.actionWrap}>
-        {wallets.length === 0 ? (
-          <Pressable style={({ pressed }) => [s.action, pressed && s.actionPressed]} onPress={() => setAddOpen(true)}>
-            <Text style={s.actionLabel}>+ CONNECT WALLET</Text>
-          </Pressable>
-        ) : (
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Pressable style={({ pressed }) => [s.action, { flex: 1 }, pressed && s.actionPressed]} onPress={refreshAll} disabled={refreshing}>
-              {refreshing
-                ? <ActivityIndicator color="#000" />
-                : <Text style={s.actionLabel}>REFRESH ↻</Text>}
-            </Pressable>
-            <Pressable style={({ pressed }) => [s.action, s.actionSecondary, pressed && s.actionPressed]} onPress={() => setWalletsOpen(true)}>
-              <Text style={[s.actionLabel, { color: C.btc }]}>{wallets.length}</Text>
-            </Pressable>
-          </View>
-        )}
-        <View style={s.actionMeta}>
-          <Text style={s.actionHint}>{wallets.length === 0 ? 'PASTE XPUB OR BTC ADDRESS' : `${wallets.map(w => w.label.toUpperCase()).join(' · ')} · LIVE`}</Text>
-          <Text style={s.actionHint}>READ-ONLY</Text>
-        </View>
+      {/* Bottom split toolbar: ME | LEADERBOARD */}
+      <View style={s.bottomBar}>
+        <Pressable
+          style={({ pressed }) => [s.bottomBtn, pressed && s.bottomBtnPressed]}
+          onPress={() => setWalletsOpen(true)}
+        >
+          <Text style={s.bottomBtnTxt}>ME</Text>
+          <Text style={s.bottomBtnSub}>{wallets.length} WALLET{wallets.length === 1 ? '' : 'S'}</Text>
+        </Pressable>
+        <View style={s.bottomDivider} />
+        <Pressable
+          style={({ pressed }) => [s.bottomBtn, pressed && s.bottomBtnPressed]}
+          onPress={() => setLbOpen(true)}
+        >
+          <Text style={s.bottomBtnTxt}>LEADERBOARD</Text>
+          <Text style={s.bottomBtnSub}>RANK #{youRank.toLocaleString('en-GB')}</Text>
+        </Pressable>
       </View>
 
       <Animated.View
@@ -774,13 +798,24 @@ const s = StyleSheet.create({
   pipOn: { backgroundColor: C.btc },
   frameBot: { color: C.btc, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginTop: 12 },
 
-  actionWrap: { padding: 14, borderTopWidth: 1, borderTopColor: C.rule },
-  action: { backgroundColor: C.btc, paddingVertical: 22, alignItems: 'center', justifyContent: 'center' },
-  actionSecondary: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.btc, paddingHorizontal: 28 },
-  actionPressed: { transform: [{ translateY: 3 }] },
-  actionLabel: { color: '#000', fontFamily: 'Geist_900Black', fontSize: 16, letterSpacing: 3 },
-  actionMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  actionHint: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 1.8 },
+  // Bottom split toolbar: ME | LEADERBOARD
+  bottomBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: C.btc,
+    backgroundColor: C.bg,
+  },
+  bottomBtn: {
+    flex: 1,
+    paddingVertical: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  bottomBtnPressed: { backgroundColor: 'rgba(247,147,26,0.08)' },
+  bottomBtnTxt: { color: C.ink, fontFamily: 'Geist_900Black', fontSize: 15, letterSpacing: 3 },
+  bottomBtnSub: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2 },
+  bottomDivider: { width: 1, backgroundColor: C.btc },
   flash: { ...StyleSheet.absoluteFillObject },
 
   awSheet: { backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.btc, maxHeight: '90%' },
