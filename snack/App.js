@@ -103,14 +103,16 @@ const fmtBtc = (sats) => {
   const stripped = s.replace(/\.?0+$/, '');
   return stripped || s;
 };
-const fmtSats = (sats) => sats.toLocaleString('en-GB');
-const fmtShortSats = (sats) => {
-  if (sats >= 1e11) return (sats / 1e8).toFixed(0) + ' BTC';
-  if (sats >= 1e9)  return (sats / 1e8).toFixed(1) + ' BTC';
-  if (sats >= 1e8)  return (sats / 1e8).toFixed(3) + ' BTC';
-  if (sats >= 1e6)  return (sats / 1e6).toFixed(2) + 'M SATS';
-  if (sats >= 1e3)  return (sats / 1e3).toFixed(1) + 'k SATS';
-  return sats.toLocaleString('en-GB') + ' SATS';
+// BTC-only display formatter. Internally we still track sats for precision
+// (1 BTC = 100,000,000 sats) but nothing user-facing ever shows that word.
+const fmtShortBtc = (sats) => {
+  if (!sats) return '0 BTC';
+  const btc = sats / 1e8;
+  if (btc >= 1000) return Math.round(btc).toLocaleString('en-GB') + ' BTC';
+  if (btc >= 10)   return btc.toFixed(1) + ' BTC';
+  if (btc >= 1)    return btc.toFixed(2) + ' BTC';
+  if (btc >= 0.01) return btc.toFixed(3) + ' BTC';
+  return btc.toFixed(4).replace(/\.?0+$/, '') + ' BTC';
 };
 const bucketForSats = (sats) => {
   for (let i = STATES.length - 1; i >= 0; i--) if (sats >= STATES[i].threshold) return i;
@@ -431,7 +433,7 @@ function WalletsModal({ visible, onClose, wallets, onRemove, onAdd, onRefresh, r
                   <Text style={s.walletSource}>{w.source.kind.toUpperCase()} · {w.source.value.slice(0, 10)}…{w.source.value.slice(-6)}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={s.walletSats}>{w.sats === null ? '—' : fmtShortSats(w.sats)}</Text>
+                  <Text style={s.walletSats}>{w.sats === null ? '—' : fmtShortBtc(w.sats)}</Text>
                   <Pressable onPress={() => onRemove(w.id)}>
                     <Text style={s.removeTxt}>REMOVE</Text>
                   </Pressable>
@@ -489,10 +491,9 @@ function Leaderboard({ visible, onClose, yourSats }) {
                     <Text style={[s.lbName, entry.you && { color: C.btcHot }]}>{entry.name}{entry.you ? '  · YOU' : ''}</Text>
                     <View style={s.lbTierRow}>
                       <View style={[s.lbBadge, BADGE_COLORS[bucket]]} />
-                      <Text style={s.lbTierName}>{STATES[bucket].label}</Text>
                     </View>
                   </View>
-                  <Text style={s.lbSats}>{fmtShortSats(entry.sats)}</Text>
+                  <Text style={s.lbSats}>{fmtShortBtc(entry.sats)}</Text>
                 </View>
               );
             })}
@@ -645,7 +646,7 @@ export default function App() {
       <View style={s.header}>
         <View>
           <Text style={s.brand}>BTC<Text style={{ color: C.btc }}>/</Text>ROCKET</Text>
-          <Text style={s.brandSub}>{cur.label}</Text>
+          {/* No descriptive subtitle — the animation itself communicates state */}
         </View>
         <Pressable style={s.rankPill} onPress={() => setLbOpen(true)}>
           <Text style={s.rankPillKey}>RANK</Text>
@@ -667,28 +668,15 @@ export default function App() {
         <View style={s.heroCenter}>
           <Rocket stateIdx={stateIdx} width={rocketW} height={heroH} />
           <ParticleLayer pools={pools} width={rocketW} anchorY={anchorY} />
+          {/* Single overlay element — the BTC number — sits on top of the animation.
+             Everything else (state, intensity, "what's happening") is communicated
+             by the rocket + particles themselves. */}
           <View style={s.overlay} pointerEvents="none">
-            <Text style={s.frameTop}>┌─ YOUR STACK ─┐</Text>
             <Animated.View style={{ transform: [{ scale: scaleAnim }], maxWidth: '100%' }}>
               <Text style={s.btcAmount} adjustsFontSizeToFit numberOfLines={1}>
                 <Text style={s.btcSymbol}>₿</Text> {fmtBtc(totalSats)}
               </Text>
             </Animated.View>
-            <Text style={s.satsSub}>{fmtSats(totalSats)} <Text style={s.satsUnit}>SATS</Text></Text>
-            <View style={[s.statusPanel, stateIdx >= 4 && s.statusPanelHot]}>
-              <View style={[s.statusDot, stateIdx >= 4 && s.statusDotHot]} />
-              <Text style={[s.statusText, stateIdx >= 4 && { color: C.btc }]}>
-                {cur.label} · STATE {String(stateIdx).padStart(2,'0')}
-              </Text>
-            </View>
-            <View style={s.pips}>
-              {STATES.map((_, i) => (
-                <View key={i} style={[s.pip, i <= stateIdx && s.pipOn]} />
-              ))}
-            </View>
-            <Text style={s.frameBot}>
-              └─ {wallets.length === 0 ? 'NO WALLETS' : `${wallets.length} CONNECTED · ${wallets.slice(0,3).map(w => w.label.toUpperCase()).join(' · ')}${wallets.length > 3 ? ` +${wallets.length - 3}` : ''}`} ─┘
-            </Text>
           </View>
         </View>
         <View style={s.gutterRight}>
@@ -784,7 +772,8 @@ const s = StyleSheet.create({
 
   frameTop: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 9, letterSpacing: 2.4, marginBottom: 4 },
   stackLabel: { color: C.ink3, fontFamily: 'IBMPlexMono_500Medium', fontSize: 10, letterSpacing: 3.5, marginBottom: 6 },
-  btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 80, letterSpacing: -3.2, textShadowColor: 'rgba(247,147,26,0.55)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 28 },
+  // Hero number — bigger now that all the descriptor text is gone.
+  btcAmount: { color: C.btc, fontFamily: 'Geist_900Black', fontSize: 96, letterSpacing: -4, textShadowColor: 'rgba(247,147,26,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 36 },
   btcSymbol: { color: C.btcHot, fontFamily: 'Geist_900Black' },
   satsSub: { color: C.ink2, fontFamily: 'IBMPlexMono_500Medium', fontSize: 12, letterSpacing: 2, marginTop: 14, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   satsUnit: { color: C.ink4 },
